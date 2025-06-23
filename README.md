@@ -102,7 +102,12 @@ API documentation is available at:
 http://localhost:3000/api-docs
 ```
 
-Note: You need to be logged in with a user having the DEVELOPER role to access the API documentation.
+**Access Information**:
+
+- API documentation is only available in development and staging environments
+- Basic authentication is required to access the documentation
+  - Username: `admin`
+  - Password: `swagger-secret`
 
 ### Default Users
 

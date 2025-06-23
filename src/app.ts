@@ -3,7 +3,6 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
-import swaggerJsDoc from "swagger-jsdoc";
 import { rateLimit } from "express-rate-limit";
 import "dotenv/config";
 
@@ -16,28 +15,12 @@ import permissionRoutes from "./routes/permission.routes";
 // Import middlewares
 import errorHandler from "./middlewares/error.middleware";
 import { authenticate } from "./middlewares/auth.middleware";
-import { checkRole } from "./middlewares/role.middleware";
 
-// Swagger configuration
-const swaggerOptions = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "API Documentation",
-      version: "1.0.0",
-      description: "RESTful API Documentation",
-    },
-    servers: [
-      {
-        url: `http://localhost:${process.env.PORT || 3000}`,
-        description: "Development server",
-      },
-    ],
-  },
-  apis: ["./src/routes/*.ts"], // Path to the API docs
-};
-
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
+// Import configurations
+import swaggerDocs, {
+  swaggerAuth,
+  isSwaggerAvailable,
+} from "./config/swagger.config";
 
 // Initialize express app
 const app = express();
@@ -64,17 +47,26 @@ app.use("/api/users", authenticate, userRoutes);
 app.use("/api/roles", authenticate, roleRoutes);
 app.use("/api/permissions", authenticate, permissionRoutes);
 
-// Swagger route with role-based access
-app.use(
-  "/api-docs",
-  authenticate,
-  checkRole(["DEVELOPER"]),
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerDocs)
-);
+// Swagger route with basic authentication for development and staging environments only
+if (isSwaggerAvailable) {
+  app.use(
+    "/api-docs",
+    swaggerAuth,
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerDocs)
+  );
+} else {
+  // In production, return 404 for Swagger route
+  app.use("/api-docs", (_, res) => {
+    res.status(404).json({
+      status: "error",
+      message: "API documentation is not available in production",
+    });
+  });
+}
 
 // Health check route
-app.get("/health", (req, res) => {
+app.get("/health", (_, res) => {
   res.status(200).json({ status: "ok", message: "Server is running" });
 });
 

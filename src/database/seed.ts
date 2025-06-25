@@ -9,8 +9,8 @@ async function seedRoles() {
     { name: "ADMIN", description: "Administrator with all privileges" },
     { name: "STAFF", description: "Staff member with limited privileges" },
     {
-      name: "DEVELOPER",
-      description: "Developer with access to technical resources",
+      name: "GUEST",
+      description: "Guest with access to comment and view content",
     },
   ];
 
@@ -39,7 +39,6 @@ async function seedPermissions() {
     { name: "CREATE_PERMISSION", description: "Can create permissions" },
     { name: "UPDATE_PERMISSION", description: "Can update permission data" },
     { name: "DELETE_PERMISSION", description: "Can delete permissions" },
-    { name: "ACCESS_SWAGGER", description: "Can access API documentation" },
   ];
 
   for (const permission of permissions) {
@@ -57,11 +56,11 @@ async function assignPermissionsToRoles() {
   // Get all roles
   const adminRole = await prisma.role.findUnique({ where: { name: "ADMIN" } });
   const staffRole = await prisma.role.findUnique({ where: { name: "STAFF" } });
-  const developerRole = await prisma.role.findUnique({
-    where: { name: "DEVELOPER" },
+  const guestRole = await prisma.role.findUnique({
+    where: { name: "GUEST" },
   });
 
-  if (!adminRole || !staffRole || !developerRole) {
+  if (!adminRole || !staffRole || !guestRole) {
     throw new Error("Required roles not found");
   }
 
@@ -87,7 +86,14 @@ async function assignPermissionsToRoles() {
   }
 
   // Staff gets basic read permissions
-  const staffPermissions = ["READ_USER", "READ_ROLE", "READ_PERMISSION"];
+  const staffPermissions = [
+    "READ_USER",
+    "UPDATE_USER",
+    "READ_ROLE",
+    "UPDATE_ROLE",
+    "READ_PERMISSION",
+    "UPDATE_PERMISSION",
+  ];
   for (const permName of staffPermissions) {
     const permId = permissionMap.get(permName);
     if (permId) {
@@ -107,26 +113,21 @@ async function assignPermissionsToRoles() {
     }
   }
 
-  // Developer gets read permissions plus swagger access
-  const devPermissions = [
-    "READ_USER",
-    "READ_ROLE",
-    "READ_PERMISSION",
-    "ACCESS_SWAGGER",
-  ];
-  for (const permName of devPermissions) {
+  // Guest gets read permissions
+  const guestPermissions = ["READ_USER", "READ_ROLE", "READ_PERMISSION"];
+  for (const permName of guestPermissions) {
     const permId = permissionMap.get(permName);
     if (permId) {
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
-            roleId: developerRole.id,
+            roleId: guestRole.id,
             permissionId: permId,
           },
         },
         update: {},
         create: {
-          roleId: developerRole.id,
+          roleId: guestRole.id,
           permissionId: permId,
         },
       });
